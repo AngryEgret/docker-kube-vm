@@ -48,7 +48,6 @@ coreos:
         Documentation=https://github.com/kelseyhightower/setup-network-environment
         Requires=network-online.target
         After=network-online.target
-
         [Service]
         ExecStartPre=-/usr/bin/mkdir -p /opt/bin
         ExecStartPre=/usr/bin/curl -L -o /opt/bin/setup-network-environment -z /opt/bin/setup-network-environment https://github.com/kelseyhightower/setup-network-environment/releases/download/v1.0.0/setup-network-environment
@@ -64,12 +63,10 @@ coreos:
       content: |
         [Unit]
         Description=Docker Socket for the API
-
         [Socket]
         ListenStream=2375
         BindIPv6Only=both
         Service=docker.service
-
         [Install]
         WantedBy=sockets.target
     - name: scheduler.service
@@ -77,7 +74,6 @@ coreos:
       content: |
         [Unit]
         Description=Set io scheduler to noop for ssds
-
         [Service]
         Type=oneshot
         ExecStart=/bin/bash -l -c 'echo noop > /sys/block/sda/queue/scheduler'
@@ -86,7 +82,6 @@ coreos:
       content: |
         [Unit]
         Description=stop update-engine
-
         [Service]
         Type=oneshot
         ExecStart=/usr/bin/systemctl stop update-engine.service
@@ -108,11 +103,10 @@ coreos:
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
         Requires=setup-network-environment.service etcd2.service generate-serviceaccount-key.service
         After=setup-network-environment.service etcd2.service generate-serviceaccount-key.service
-
         [Service]
         EnvironmentFile=/etc/network-environment
         ExecStartPre=-/usr/bin/mkdir -p /opt/bin
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-apiserver -z /opt/bin/kube-apiserver https://storage.googleapis.com/kubernetes-release/release/v1.0.6/bin/linux/amd64/kube-apiserver
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-apiserver -z /opt/bin/kube-apiserver https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kube-apiserver
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-apiserver
         ExecStartPre=/opt/bin/wupiao 127.0.0.1 2379/v2/machines
         ExecStart=/opt/bin/kube-apiserver \
@@ -139,9 +133,8 @@ coreos:
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
         Requires=kube-apiserver.service
         After=kube-apiserver.service
-
         [Service]
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-controller-manager -z /opt/bin/kube-controller-manager https://storage.googleapis.com/kubernetes-release/release/v1.0.6/bin/linux/amd64/kube-controller-manager
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-controller-manager -z /opt/bin/kube-controller-manager https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kube-controller-manager
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-controller-manager
         ExecStart=/opt/bin/kube-controller-manager \
         --service_account_private_key_file=/opt/bin/kube-serviceaccount.key \
@@ -157,9 +150,8 @@ coreos:
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
         Requires=kube-apiserver.service
         After=kube-apiserver.service
-
         [Service]
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-scheduler -z /opt/bin/kube-scheduler https://storage.googleapis.com/kubernetes-release/release/v1.0.6/bin/linux/amd64/kube-scheduler
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-scheduler -z /opt/bin/kube-scheduler https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kube-scheduler
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-scheduler
         ExecStart=/opt/bin/kube-scheduler --master=127.0.0.1:8080
         Restart=always
@@ -173,7 +165,7 @@ coreos:
         Requires=setup-network-environment.service
         After=setup-network-environment.service
         [Service]
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-proxy -z /opt/bin/kube-proxy https://storage.googleapis.com/kubernetes-release/release/v1.0.6/bin/linux/amd64/kube-proxy
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-proxy -z /opt/bin/kube-proxy https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kube-proxy
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-proxy
         # wait for kubernetes master to be up and ready
         ExecStartPre=/opt/bin/wupiao 172.31.255.254 8080
@@ -192,7 +184,7 @@ coreos:
         After=setup-network-environment.service
         [Service]
         EnvironmentFile=/etc/network-environment
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kubelet -z /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.0.6/bin/linux/amd64/kubelet
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kubelet -z /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kubelet
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kubelet
         # wait for kubernetes master to be up and ready
         ExecStartPre=/opt/bin/wupiao 172.31.255.254 8080
@@ -205,6 +197,37 @@ coreos:
         --logtostderr=true \
         --cadvisor_port=4194 \
         --healthz_bind_address=0.0.0.0 \
+        --cluster-dns=10.100.254.254 \
+        --cluster-domain=local \
         --healthz_port=10248
         Restart=always
         RestartSec=10
+    - name: kube-kubectl.service
+      command: start
+      content: |
+        [Unit]
+        Description=Kubernetes Kubectl
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=setup-network-environment.service
+        After=setup-network-environment.service
+        [Service]
+        EnvironmentFile=/etc/network-environment
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kubectl -z /opt/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kubectl
+        ExecStart=/usr/bin/chmod +x /opt/bin/kubectl
+    - name: kube-dns.service
+      command: start
+      content: |
+        [Unit]
+        Description=Kubernetes DNS
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=kube-apiserver.service
+        After=kube-apiserver.service
+        After=kube-kubectl.service
+        After=kube-kubelet.service
+        [Service]
+        EnvironmentFile=/etc/network-environment
+        ExecStartPre=/opt/bin/wupiao 172.31.255.254 8080
+        ExecStartPre=/opt/bin/kubectl --server=http://10.0.2.15:8080 create -f /home/core/kube-resources/namespaces/operations.yaml
+        ExecStartPre=/opt/bin/kubectl --server=http://10.0.2.15:8080 create -f /home/core/kube-resources/namespaces/kube-system.yaml
+        ExecStartPre=/opt/bin/kubectl --server=http://10.0.2.15:8080 create -f /home/core/kube-resources/svc/skydns-svc.yaml
+        ExecStart=/opt/bin/kubectl --server=http://10.0.2.15:8080 create -f /home/core/kube-resources/rc/skydns-rc.yaml

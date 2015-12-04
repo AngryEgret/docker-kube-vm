@@ -10,6 +10,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.network "private_network", ip: "172.31.255.254"
   config.vm.synced_folder "#{ENV['HOME']}/src", "/home/core/src", id: "core", :nfs => true, :mount_options => ['nolock,vers=3,udp'] 
+  config.vm.synced_folder ".", "/home/core/kube-resources", id: "core", :nfs => true, :mount_options => ['nolock,vers=3,udp'] 
 
   config.vm.provider :virtualbox do |v|
     v.name = "coreos-vm"
