@@ -231,3 +231,18 @@ coreos:
         ExecStartPre=/opt/bin/kubectl --server=http://10.0.2.15:8080 create -f /home/core/kube-resources/namespaces/kube-system.yaml
         ExecStartPre=/opt/bin/kubectl --server=http://10.0.2.15:8080 create -f /home/core/kube-resources/svc/skydns-svc.yaml
         ExecStart=/opt/bin/kubectl --server=http://10.0.2.15:8080 create -f /home/core/kube-resources/rc/skydns-rc.yaml
+    - name: kube-ui.service
+      command: start
+      content: |
+        [Unit]
+        Description=Kubernetes UI
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=kube-apiserver.service
+        After=kube-apiserver.service
+        After=kube-kubectl.service
+        After=kube-kubelet.service
+        [Service]
+        EnvironmentFile=/etc/network-environment
+        ExecStartPre=/opt/bin/wupiao 172.31.255.254 8080
+        ExecStartPre=/opt/bin/kubectl --server=http://10.0.2.15:8080 create -f /home/core/kube-resources/svc/kube-ui-svc.yaml
+        ExecStart=/opt/bin/kubectl --server=http://10.0.2.15:8080 create -f /home/core/kube-resources/rc/kube-ui-rc.yaml
