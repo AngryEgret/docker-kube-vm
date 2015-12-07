@@ -106,7 +106,7 @@ coreos:
         [Service]
         EnvironmentFile=/etc/network-environment
         ExecStartPre=-/usr/bin/mkdir -p /opt/bin
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-apiserver -z /opt/bin/kube-apiserver https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kube-apiserver
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-apiserver -z /opt/bin/kube-apiserver https://storage.googleapis.com/kubernetes-release/release/v1.1.2/bin/linux/amd64/kube-apiserver
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-apiserver
         ExecStartPre=/opt/bin/wupiao 127.0.0.1 2379/v2/machines
         ExecStart=/opt/bin/kube-apiserver \
@@ -134,7 +134,7 @@ coreos:
         Requires=kube-apiserver.service
         After=kube-apiserver.service
         [Service]
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-controller-manager -z /opt/bin/kube-controller-manager https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kube-controller-manager
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-controller-manager -z /opt/bin/kube-controller-manager https://storage.googleapis.com/kubernetes-release/release/v1.1.2/bin/linux/amd64/kube-controller-manager
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-controller-manager
         ExecStart=/opt/bin/kube-controller-manager \
         --service_account_private_key_file=/opt/bin/kube-serviceaccount.key \
@@ -151,55 +151,9 @@ coreos:
         Requires=kube-apiserver.service
         After=kube-apiserver.service
         [Service]
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-scheduler -z /opt/bin/kube-scheduler https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kube-scheduler
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-scheduler -z /opt/bin/kube-scheduler https://storage.googleapis.com/kubernetes-release/release/v1.1.2/bin/linux/amd64/kube-scheduler
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-scheduler
         ExecStart=/opt/bin/kube-scheduler --master=127.0.0.1:8080
-        Restart=always
-        RestartSec=10
-    - name: kube-proxy.service
-      command: start
-      content: |
-        [Unit]
-        Description=Kubernetes Proxy
-        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-        Requires=setup-network-environment.service
-        After=setup-network-environment.service
-        [Service]
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-proxy -z /opt/bin/kube-proxy https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kube-proxy
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-proxy
-        # wait for kubernetes master to be up and ready
-        ExecStartPre=/opt/bin/wupiao 172.31.255.254 8080
-        ExecStart=/opt/bin/kube-proxy \
-        --master=172.31.255.254:8080 \
-        --logtostderr=true
-        Restart=always
-        RestartSec=10
-    - name: kube-kubelet.service
-      command: start
-      content: |
-        [Unit]
-        Description=Kubernetes Kubelet
-        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-        Requires=setup-network-environment.service
-        After=setup-network-environment.service
-        [Service]
-        EnvironmentFile=/etc/network-environment
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kubelet -z /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kubelet
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/kubelet
-        # wait for kubernetes master to be up and ready
-        ExecStartPre=/opt/bin/wupiao 172.31.255.254 8080
-        ExecStart=/opt/bin/kubelet \
-        --address=0.0.0.0 \
-        --port=10250 \
-        --hostname_override=${DEFAULT_IPV4} \
-        --api_servers=172.31.255.254:8080 \
-        --allow_privileged=true \
-        --logtostderr=true \
-        --cadvisor_port=4194 \
-        --healthz_bind_address=0.0.0.0 \
-        --cluster-dns=10.100.254.254 \
-        --cluster-domain=local \
-        --healthz_port=10248
         Restart=always
         RestartSec=10
     - name: kube-kubectl.service
@@ -212,7 +166,7 @@ coreos:
         After=setup-network-environment.service
         [Service]
         EnvironmentFile=/etc/network-environment
-        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kubectl -z /opt/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v1.2.0-alpha.4/bin/linux/amd64/kubectl
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kubectl -z /opt/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v1.1.2/bin/linux/amd64/kubectl
         ExecStart=/usr/bin/chmod +x /opt/bin/kubectl
     - name: kube-dns.service
       command: start

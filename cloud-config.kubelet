@@ -1,0 +1,149 @@
+#cloud-config
+---
+write-files:
+  - path: /etc/conf.d/nfs
+    permissions: '0644'
+    content: |
+      OPTS_RPC_MOUNTD=""
+  - path: /opt/bin/wupiao
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      # [w]ait [u]ntil [p]ort [i]s [a]ctually [o]pen
+      [ -n "$1" ] && [ -n "$2" ] && while ! curl --output /dev/null \
+        --silent --head --fail \
+        http://${1}:${2}; do sleep 1 && echo -n .; done;
+      exit $?
+
+hostname: minion
+coreos:
+  etcd2:
+    proxy: on 
+    listen-client-urls: http://localhost:2379
+    initial-cluster: etcdserver=http://172.31.255.254:2380
+  fleet:
+    metadata: "role=minion"
+  units:
+    - name: generate-serviceaccount-key.service
+      command: start
+      content: |
+        [Unit]
+        Description=Generate service-account key file
+        [Service]
+        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
+        ExecStart=/bin/openssl genrsa -out /opt/bin/kube-serviceaccount.key 2048 2>/dev/null
+        RemainAfterExit=yes
+        Type=oneshot
+    - name: setup-network-environment.service
+      command: start
+      content: |
+        [Unit]
+        Description=Setup Network Environment
+        Documentation=https://github.com/kelseyhightower/setup-network-environment
+        Requires=network-online.target
+        After=network-online.target
+        [Service]
+        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/setup-network-environment -z /opt/bin/setup-network-environment https://github.com/kelseyhightower/setup-network-environment/releases/download/v1.0.0/setup-network-environment
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/setup-network-environment
+        ExecStart=/opt/bin/setup-network-environment
+        RemainAfterExit=yes
+        Type=oneshot
+    - name: fleet.service
+      command: start
+    - name: docker-tcp.socket
+      command: start
+      enable: true
+      content: |
+        [Unit]
+        Description=Docker Socket for the API
+        [Socket]
+        ListenStream=2375
+        BindIPv6Only=both
+        Service=docker.service
+        [Install]
+        WantedBy=sockets.target
+    - name: scheduler.service
+      command: start
+      content: |
+        [Unit]
+        Description=Set io scheduler to noop for ssds
+        [Service]
+        Type=oneshot
+        ExecStart=/bin/bash -l -c 'echo noop > /sys/block/sda/queue/scheduler'
+    - name: stop-update-engine.service
+      command: start
+      content: |
+        [Unit]
+        Description=stop update-engine
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/systemctl stop update-engine.service
+        ExecStartPost=/usr/bin/systemctl mask update-engine.service
+    - name: flanneld.service
+      command: start
+      drop-ins:
+        - name: 50-network-config.conf
+          content: |
+            [Unit]
+            Requires=etcd2.service
+            [Service]
+            ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{"Network":"10.244.0.0/16", "Backend": {"Type": "vxlan"}}'
+    - name: kube-proxy.service
+      command: start
+      content: |
+        [Unit]
+        Description=Kubernetes Proxy
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=setup-network-environment.service
+        After=setup-network-environment.service
+        [Service]
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kube-proxy -z /opt/bin/kube-proxy https://storage.googleapis.com/kubernetes-release/release/v1.1.2/bin/linux/amd64/kube-proxy
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-proxy
+        # wait for kubernetes master to be up and ready
+        ExecStartPre=/opt/bin/wupiao 172.31.255.254 8080
+        ExecStart=/opt/bin/kube-proxy \
+        --master=172.31.255.254:8080 \
+        --logtostderr=true
+        Restart=always
+        RestartSec=10
+    - name: kube-kubelet.service
+      command: start
+      content: |
+        [Unit]
+        Description=Kubernetes Kubelet
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=setup-network-environment.service
+        After=setup-network-environment.service
+        [Service]
+        EnvironmentFile=/etc/network-environment
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kubelet -z /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.1.2/bin/linux/amd64/kubelet
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kubelet
+        # wait for kubernetes master to be up and ready
+        ExecStartPre=/opt/bin/wupiao 172.31.255.254 8080
+        ExecStart=/opt/bin/kubelet \
+        --address=0.0.0.0 \
+        --port=10250 \
+        --api_servers=172.31.255.254:8080 \
+        --allow_privileged=true \
+        --logtostderr=true \
+        --cadvisor_port=4194 \
+        --healthz_bind_address=0.0.0.0 \
+        --cluster-dns=10.100.254.254 \
+        --cluster-domain=local \
+        --healthz_port=10248 \
+        --hostname_override=$private_ipv4
+        Restart=always
+        RestartSec=10
+    - name: kube-kubectl.service
+      command: start
+      content: |
+        [Unit]
+        Description=Kubernetes Kubectl
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=setup-network-environment.service
+        After=setup-network-environment.service
+        [Service]
+        EnvironmentFile=/etc/network-environment
+        ExecStartPre=/usr/bin/curl -L -o /opt/bin/kubectl -z /opt/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v1.1.2/bin/linux/amd64/kubectl
+        ExecStart=/usr/bin/chmod +x /opt/bin/kubectl
