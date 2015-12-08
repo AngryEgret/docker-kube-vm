@@ -45,7 +45,7 @@ Vagrant.configure("2") do |config|
     kubelet1.vm.provision :shell, :inline => "mv /tmp/vagrantfile-user-data /var/lib/coreos-vagrant/", :privileged => true    
   end
   
-  config.vm.define "kubelet2" do |kubelet2|
+  config.vm.define "kubelet2", autostart: false do |kubelet2|
     kubelet2.vm.network "private_network", ip: "172.31.255.101"
     kubelet2.vm.provider :virtualbox do |v|
       v.name = "coreos-vm"
@@ -58,6 +58,6 @@ Vagrant.configure("2") do |config|
       ]
     end
     kubelet2.vm.provision :file, :source => "#{CLOUD_CONFIG_KUBELET_PATH}", :destination => "/tmp/vagrantfile-user-data"
-    kubelet2.vm.provision :shell, :inline => "mv /tmp/vagrantfile-user-data /var/lib/coreos-vagrant/", :privileged => true        
+    kubelet2.vm.provision :shell, :inline => "mv /tmp/vagrantfile-user-data /var/lib/coreos-vagrant/", :privileged => true
   end
 end
