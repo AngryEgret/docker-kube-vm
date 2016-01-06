@@ -36,9 +36,9 @@ Vagrant.configure("2") do |config|
       v.customize [
           "modifyvm", :id,
           "--name", "kubelet1",
-          "--memory", 1024,
+          "--memory", 1536,
           "--natdnshostresolver1", "on",
-          "--cpus", 1,
+          "--cpus", 2,
       ]
     end
     kubelet1.vm.provision :file, :source => "#{CLOUD_CONFIG_KUBELET_PATH}", :destination => "/tmp/vagrantfile-user-data"
