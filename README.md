@@ -9,5 +9,5 @@ $ kubectl config use-context local
 # Docker Usage
 
 ```
-$ export DOCKER_HOST=tcp://172.31.255.254:2375
+$ export DOCKER_HOST=tcp://172.31.255.100:2375
 ```
